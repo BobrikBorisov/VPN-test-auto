@@ -1,0 +1,36 @@
+name: Update VPN Configs
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Запуск каждый час в 00 минут
+  workflow_dispatch: # Кнопка для ручного запуска (чтобы проверить прямо сейчас)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run script
+        run: python filter_configs.py
+
+      - name: Update Gist
+        env:
+          GH_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+        run: |
+          # Считываем результат, который создал питон (final_whitelist_subs.txt)
+          CONTENT=$(cat final_whitelist_subs.txt)
+          
+          # Отправляем в Gist в файл configs.txt
+          echo "$CONTENT" | gh gist edit $GIST_ID -f "configs.txt" -
