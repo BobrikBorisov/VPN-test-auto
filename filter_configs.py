@@ -4,14 +4,14 @@ import random
 
 # --- 1. ИСТОЧНИКИ ---
 URLS = [
-    "https://raw.githubusercontent.com/barry-far/V2ray-Config/refs/heads/main/All_Configs_Sub.txt",
-    "https://raw.githubusercontent.com/Epodonios/v2ray-configs/refs/heads/main/All_Configs_Sub.txt",
+    "https://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_lite.txt",
+    "https://raw.githubusercontent.com/Epodonios/v2ray-configs/refs/heads/main/All_Configs_Sub.txt"
 ]
 
 # --- 2. ДОМЕНЫ ДЛЯ ПОДМЕНЫ ---
 DOMAINS_YANDEX = [
     "travel.yandex.ru", "kinopoisk.ru", "hd.kinopoisk.ru", "mobile.yandex.ru",
-    "music.yandex.ru", "yandex.ru", "dzen.ru", "ya.ru", "disk.yandex.ru", 
+    "music.yandex.ru", "yandex.ru", "dzen.ru", "ya.ru", "disk.yandex.ru",
     "auto.ru", "market.yandex.ru", "taxi.yandex.ru"
 ]
 DOMAINS_VK = [
@@ -34,21 +34,17 @@ def get_provider(ip):
 
 def replace_sni(link, new_sni, new_name):
     """Меняет SNI и название в ссылке через Regex"""
-    # 1. Заменяем или добавляем SNI
     if "sni=" in link:
         link = re.sub(r'sni=[^&#]+', f'sni={new_sni}', link)
     else:
-        # Если sni нет, добавляем его перед хештегом # или в конец
         if "#" in link:
             link = link.replace("#", f"&sni={new_sni}#", 1)
         else:
             link += f"&sni={new_sni}"
             
-    # 2. Также меняем host, если он есть (для надежности)
     if "host=" in link:
         link = re.sub(r'host=[^&#]+', f'host={new_sni}', link)
 
-    # 3. Меняем название (хештег в конце)
     if "#" in link:
         link = re.sub(r'#[^#]*$', f'#{new_name}', link)
     else:
@@ -62,7 +58,6 @@ def decode_if_needed(content):
     if "vless://" in content:
         return content.splitlines()
     try:
-        # Пытаемся декодировать Base64
         decoded = base64.b64decode(content).decode('utf-8', errors='ignore')
         return decoded.splitlines()
     except:
@@ -83,17 +78,14 @@ def process_configs():
                 line = line.strip()
                 if not line.startswith("vless://"): continue
                 
-                # Ищем IP адрес в ссылке (между @ и :)
                 match = re.search(r'@([^:]+):', line)
                 if not match: continue
                 ip = match.group(1)
                 
                 provider_name, domain_list = get_provider(ip)
                 
-                # Если это не целевой провайдер - пропускаем
                 if provider_name == "UNKNOWN": continue
 
-                # Генерируем 2 варианта для надежности
                 selected_snis = random.sample(domain_list, min(2, len(domain_list)))
                 
                 for i, sni in enumerate(selected_snis):
@@ -103,21 +95,15 @@ def process_configs():
         except Exception as e:
             print(f"Ошибка с {url}: {e}")
 
-    # Удаляем дубликаты и перемешиваем
     unique_configs = list(set(generated_configs))
     random.shuffle(unique_configs)
     
     print(f">>> Найдено: {len(unique_configs)} конфигов.")
     
-    # Сохраняем ПРОСТЫМ ТЕКСТОМ (без Base64)
     result_text = "\n".join(unique_configs)
     
     with open("final_whitelist_subs.txt", "w") as f:
         f.write(result_text)
-
-if __name__ == "__main__":
-    process_configs()
-        f.write(result_base64)
 
 if __name__ == "__main__":
     process_configs()
