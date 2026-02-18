@@ -5,7 +5,7 @@ import random
 # --- 1. ИСТОЧНИКИ ---
 URLS = [
     "https://raw.githubusercontent.com/barry-far/V2ray-Config/refs/heads/main/All_Configs_Sub.txt",
-    "https://raw.githubusercontent.com/Epodonios/v2ray-configs/refs/heads/main/All_Configs_Sub.txt"
+    "https://raw.githubusercontent.com/Epodonios/v2ray-configs/refs/heads/main/All_Configs_Sub.txt",
 ]
 
 # --- 2. ДОМЕНЫ ДЛЯ ПОДМЕНЫ ---
