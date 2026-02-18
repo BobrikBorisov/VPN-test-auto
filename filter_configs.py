@@ -4,7 +4,6 @@ import random
 
 # --- 1. ИСТОЧНИКИ (Добавил побольше универсальных) ---
 URLS = [
-    "https://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_universal.txt", # RU-специфичный
     "https://raw.githubusercontent.com/Epodonios/v2ray-configs/refs/heads/main/All_Configs_Sub.txt",
     "https://raw.githubusercontent.com/barry-far/V2ray-Config/refs/heads/main/All_Configs_Sub.txt",
     "https://raw.githubusercontent.com/liketolivefree/kobabi/refs/heads/main/sub.txt",
