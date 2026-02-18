@@ -1,174 +1,122 @@
 import requests
-import base64
 import re
 import random
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
-# --- 1. ТВОИ ИСТОЧНИКИ ---
+# --- 1. ИСТОЧНИКИ ---
 URLS = [
-    "https://raw.githubusercontent.com/Epodonios/v2ray-configs/refs/heads/main/All_Configs_Sub.txt",
-  "https://raw.githubusercontent.com/barry-far/V2ray-Config/refs/heads/main/All_Configs_Sub.txt",
-"https://raw.githubusercontent.com/barry-far/V2ray-Config/refs/heads/main/All_Configs_base64_Sub.txt",
+    "https://raw.githubusercontent.com/barry-far/V2ray-Config/refs/heads/main/All_Configs_Sub.txt",
+    "https://raw.githubusercontent.com/Epodonios/v2ray-configs/refs/heads/main/All_Configs_Sub.txt"
 ]
 
-# --- 2. ТВОИ ДОМЕНЫ (ОТСОРТИРОВАННЫЕ ИЗ ТВОЕГО ФАЙЛА) ---
-# Группа Яндекс (IP 51.250, 84.201, 158.160, 178.154, 130.193)
+# --- 2. ДОМЕНЫ ДЛЯ ПОДМЕНЫ ---
 DOMAINS_YANDEX = [
     "travel.yandex.ru", "kinopoisk.ru", "hd.kinopoisk.ru", "mobile.yandex.ru",
-    "music.yandex.ru", "yandex.ru", "dzen.ru", "ya.ru", "mail.yandex.ru",
-    "disk.yandex.ru", "auto.ru", "market.yandex.ru", "taxi.yandex.ru",
-    "payment-widget.plus.kinopoisk.ru", "st.kinopoisk.ru", "api.plus.kinopoisk.ru"
+    "music.yandex.ru", "yandex.ru", "dzen.ru", "ya.ru", "disk.yandex.ru", 
+    "auto.ru", "market.yandex.ru", "taxi.yandex.ru"
 ]
-
-# Группа VK / Mail.ru (IP 95.163, 87.240, 93.186 + Selectel иногда)
 DOMAINS_VK = [
     "vk.com", "m.vk.com", "api.vk.com", "login.vk.com", "mail.ru", "cloud.mail.ru",
-    "e.mail.ru", "ok.ru", "m.ok.ru", "userapi.com", "sun9-101.userapi.com",
-    "vkuser.net", "vk-portal.net", "imgs.mail.ru", "otvet.mail.ru"
+    "e.mail.ru", "ok.ru", "userapi.com", "vkuser.net", "vk-portal.net"
 ]
+DOMAINS_SBER = ["sberbank.ru", "online.sberbank.ru", "id.sber.ru"]
+DOMAINS_GOV = ["gosuslugi.ru", "lk.gosuslugi.ru", "nalog.ru", "mos.ru"]
 
-# Группа Сбер (IP 194.54, 185.174)
-DOMAINS_SBER = [
-    "sberbank.ru", "online.sberbank.ru", "id.sber.ru", "api.sberbank.ru"
-]
-
-# Группа Гос / Нейтральные (Если провайдер не определен, пробуем эти)
-DOMAINS_GOV = [
-    "gosuslugi.ru", "lk.gosuslugi.ru", "esia.gosuslugi.ru", "nalog.ru", "mos.ru"
-]
-
-# --- 3. ДИАПАЗОНЫ IP (ОПРЕДЕЛИТЕЛЬ ПРОВАЙДЕРА) ---
-# Это упрощенная проверка по первым октетам
-def detect_provider(ip):
+# --- 3. ФУНКЦИИ ---
+def get_provider(ip):
+    """Определяет провайдера по IP"""
     if re.match(r"^(51\.250|84\.201|158\.160|178\.154|130\.193|85\.193|62\.119|213\.180)\.", ip):
-        return "YANDEX"
+        return "YANDEX", DOMAINS_YANDEX
     if re.match(r"^(87\.240|95\.163|93\.186|217\.69|128\.140|185\.169)\.", ip):
-        return "VK"
+        return "VK", DOMAINS_VK
     if re.match(r"^(194\.54|185\.174)\.", ip):
-        return "SBER"
-    return "UNKNOWN"
+        return "SBER", DOMAINS_SBER
+    return "UNKNOWN", DOMAINS_GOV
 
-# --- ФУНКЦИИ ---
-def decode_base64(data):
-    missing_padding = len(data) % 4
-    if missing_padding:
-        data += '=' * (4 - missing_padding)
-    try:
-        return base64.b64decode(data).decode('utf-8', errors='ignore')
-    except:
-        return ""
-
-def parse_vless(link):
-    """Разбирает ссылку vless:// на части"""
-    try:
-        # Убираем vless://
-        body = link[8:]
-        if "@" not in body: return None # Нестандартная ссылка
-        
-        uuid_part, rest = body.split("@", 1)
-        if ":" not in rest: return None
-        
-        ip_port, params_raw = rest.split("?", 1)
-        ip, port = ip_port.split(":", 1)
-        
-        if "#" in params_raw:
-            query_str, name = params_raw.split("#", 1)
+def replace_sni(link, new_sni, new_name):
+    """Меняет SNI и название в ссылке через Regex"""
+    # 1. Заменяем или добавляем SNI
+    if "sni=" in link:
+        link = re.sub(r'sni=[^&#]+', f'sni={new_sni}', link)
+    else:
+        # Если sni нет, добавляем его перед хештегом # или в конец
+        if "#" in link:
+            link = link.replace("#", f"&sni={new_sni}#", 1)
         else:
-            query_str, name = params_raw, "NoName"
+            link += f"&sni={new_sni}"
             
-        params = parse_qs(query_str)
-        return {"uuid": uuid_part, "ip": ip, "port": port, "params": params, "name": name}
+    # 2. Также меняем host, если он есть (для надежности)
+    if "host=" in link:
+        link = re.sub(r'host=[^&#]+', f'host={new_sni}', link)
+
+    # 3. Меняем название (хештег в конце)
+    if "#" in link:
+        link = re.sub(r'#[^#]*$', f'#{new_name}', link)
+    else:
+        link += f"#{new_name}"
+        
+    return link
+
+def decode_if_needed(content):
+    """Пытается найти ссылки, если файл зашифрован"""
+    import base64
+    if "vless://" in content:
+        return content.splitlines()
+    try:
+        # Пытаемся декодировать Base64
+        decoded = base64.b64decode(content).decode('utf-8', errors='ignore')
+        return decoded.splitlines()
     except:
-        return None
-
-def build_vless(data, new_sni, tag_suffix):
-    """Собирает ссылку обратно с новым SNI"""
-    # Обновляем SNI в параметрах
-    data['params']['sni'] = [new_sni]
-    
-    # Можно также обновить host, если он есть (для WS)
-    if 'host' in data['params']:
-         data['params']['host'] = [new_sni]
-
-    # Собираем строку параметров
-    query_string = urlencode(data['params'], doseq=True)
-    
-    # Новое имя
-    new_name = f"{data['name']}_{tag_suffix}"
-    
-    return f"vless://{data['uuid']}@{data['ip']}:{data['port']}?{query_string}#{new_name}"
+        return []
 
 def process_configs():
     generated_configs = []
-    
-    print(">>> Скачивание и анализ...")
-    
+    print(">>> Начинаю обработку...")
+
     for url in URLS:
         try:
             resp = requests.get(url, timeout=10)
             if resp.status_code != 200: continue
             
-            content = resp.text.strip()
-            # Пробуем декодировать Base64, если это не чистый текст
-            if "vless://" not in content:
-                 decoded = decode_base64(content)
-                 lines = decoded.splitlines()
-            else:
-                 lines = content.splitlines()
+            lines = decode_if_needed(resp.text.strip())
 
             for line in lines:
                 line = line.strip()
                 if not line.startswith("vless://"): continue
                 
-                # Парсим конфиг
-                config = parse_vless(line)
-                if not config: continue
+                # Ищем IP адрес в ссылке (между @ и :)
+                match = re.search(r'@([^:]+):', line)
+                if not match: continue
+                ip = match.group(1)
                 
-                ip = config['ip']
-                provider = detect_provider(ip)
+                provider_name, domain_list = get_provider(ip)
                 
-                # Фильтр: берем только RU IP (если провайдер определился или IP похож на RU)
-                # Можно расширить регулярки выше, но пока берем только точное совпадение
-                if provider == "UNKNOWN":
-                    # Дополнительная проверка: пропускать совсем левые IP
-                    continue 
+                # Если это не целевой провайдер - пропускаем
+                if provider_name == "UNKNOWN": continue
 
-                # Выбираем список доменов
-                target_domains = []
-                if provider == "YANDEX":
-                    target_domains = DOMAINS_YANDEX
-                elif provider == "VK":
-                    target_domains = DOMAINS_VK
-                elif provider == "SBER":
-                    target_domains = DOMAINS_SBER
-                
-                # ГЕНЕРАЦИЯ ВАРИАНТОВ
-                # Берем исходный конфиг и создаем 3 копии с РАЗНЫМИ доменами из списка
-                # Чтобы не раздувать файл до гигабайта, берем 3 случайных домена
-                selected_snis = random.sample(target_domains, min(3, len(target_domains)))
+                # Генерируем 2 варианта для надежности
+                selected_snis = random.sample(domain_list, min(2, len(domain_list)))
                 
                 for i, sni in enumerate(selected_snis):
-                    # Пропускаем, если домен уже такой же
-                    current_sni = config['params'].get('sni', [''])[0]
-                    if current_sni == sni:
-                        generated_configs.append(line) # Оставляем оригинал
-                        continue
-                        
-                    new_link = build_vless(config, sni, f"{provider}_{i+1}")
+                    new_link = replace_sni(line, sni, f"🇷🇺_{provider_name}_{i+1}_{sni}")
                     generated_configs.append(new_link)
 
         except Exception as e:
-            print(f"Error {url}: {e}")
+            print(f"Ошибка с {url}: {e}")
 
-    # Удаляем дубликаты
+    # Удаляем дубликаты и перемешиваем
     unique_configs = list(set(generated_configs))
-    print(f">>> Готово! Сгенерировано {len(unique_configs)} конфигов.")
+    random.shuffle(unique_configs)
     
-    # Кодируем в Base64
+    print(f">>> Найдено: {len(unique_configs)} конфигов.")
+    
+    # Сохраняем ПРОСТЫМ ТЕКСТОМ (без Base64)
     result_text = "\n".join(unique_configs)
-    result_base64 = base64.b64encode(result_text.encode('utf-8')).decode('utf-8')
     
     with open("final_whitelist_subs.txt", "w") as f:
+        f.write(result_text)
+
+if __name__ == "__main__":
+    process_configs()
         f.write(result_base64)
 
 if __name__ == "__main__":
