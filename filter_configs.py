@@ -14,7 +14,7 @@ URLS = [
 ]
 
 # --- 2. СЛОВАРИ ДОМЕНОВ (Загружаются из файла) ---
-DOMAINS = {"YANDEX": [], "VK": [], "SBER": [], "GOV": [], "OTHER_RU":[]}
+DOMAINS = {"YANDEX": [], "VK":[], "SBER": [], "GOV": [], "OTHER_RU":[]}
 
 # --- 3. ФУНКЦИИ ---
 def categorize_domains(filename="good_sni.txt"):
@@ -24,8 +24,13 @@ def categorize_domains(filename="good_sni.txt"):
             for line in f:
                 domain = line.strip()
                 if not domain or domain.startswith('#'): continue
-                if any(x in domain for x in): DOMAINS.append(domain)
-                elif any(x in domain for x in): DOMAINS.append(domain)
+                
+                if any(x in domain for x in):
+                    DOMAINS.append(domain)
+                elif any(x in domain for x in):
+                    DOMAINS.append(domain)
+                else:
+                    DOMAINS.append(domain)
     except FileNotFoundError:
         print(f"!!! ВНИМАНИЕ: Файл {filename} не найден! RU-серверы не будут переименованы.")
 
@@ -72,16 +77,14 @@ def verify_and_qualify(line):
         if "flow=xtls-rprx-vision" in line:
             quality = 1 # Высший приоритет - Vision
         else:
-            return None, None # <--- ОШИБКА БЫЛА ЗДЕСЬ (исправлено)
+            return None, None 
     else: # RU_YANDEX или RU_VK
         quality = 2 # Российские серверы тоже важны
         
     # --- Проверка стабильности ---
     if is_server_stable(ip, port):
-        print(f" Найден стабильный сервер: {ip}:{port} (Тип: {provider})")
         return line, quality
         
-    print(f" Сервер {ip}:{port} не прошел проверку стабильности.")
     return None, None
 
 # --- ГЛАВНАЯ ЛОГИКА ---
@@ -109,8 +112,7 @@ def main():
                 result_line, quality = future.result()
                 if result_line:
                     qualified_configs.append((result_line, quality))
-            except Exception as e:
-                # Защита: если отдельный поток упадет, скрипт продолжит работу
+            except Exception:
                 pass
     
     print(f"\n>>> Этап 2: Проверка завершена. Найдено {len(qualified_configs)} стабильных серверов.")
@@ -141,7 +143,7 @@ def main():
                 new_link = re.sub(r'#*$', f'#🇷🇺_Stable_{provider}_{sni}', new_link)
                 final_configs.append(new_link)
 
-    # Удаляем дубликаты (если они появились после замены SNI)
+    # Удаляем дубликаты
     unique_finals = list(set(final_configs))
 
     print(f"\n>>> Готово! Свежий и стабильный улов: {len(unique_finals)} конфигов.")
