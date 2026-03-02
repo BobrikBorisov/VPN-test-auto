@@ -2,7 +2,7 @@ name: Update VPN Configs
 
 on:
   schedule:
-    - cron: '0 * * * *' # Запуск каждый час в 00 минут
+    - cron: '30 */4 * * *'     
   workflow_dispatch: # Кнопка для ручного запуска (чтобы проверить прямо сейчас)
 
 jobs:
