@@ -7,8 +7,11 @@ URLS = [
     "https://raw.githubusercontent.com/Epodonios/v2ray-configs/refs/heads/main/All_Configs_Sub.txt",
     "https://raw.githubusercontent.com/barry-far/V2ray-Config/refs/heads/main/All_Configs_Sub.txt",
     "https://raw.githubusercontent.com/liketolivefree/kobabi/refs/heads/main/sub.txt",
+    "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless", # Мощный краулер
     "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge.txt", # Новый
     "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/refs/heads/main/subscriptions/v2ray/all_sub.txt", # Хороший микс
+    "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless", # Мощный краулер
+    "https://raw.githubusercontent.com/Ashkan-m/v2ray/main/Sub.txt", # Чистый текст
 ]
 
 # --- 2. ДОМЕНЫ ДЛЯ ПОДМЕНЫ В CDN-КОНФИГАХ ---
