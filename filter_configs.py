@@ -10,9 +10,11 @@ URLS = [
     "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless", # Мощный краулер
     "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge.txt", # Новый
     "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/refs/heads/main/subscriptions/v2ray/all_sub.txt", # Хороший микс
-    "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless", # Мощный краулер
-    "https://raw.githubusercontent.com/Ashkan-m/v2ray/main/Sub.txt", # Чистый текст
-]
+    "https://raw.githubusercontent.com/Surfboardv2ray/TGParse/main/python/vless", # Новый сильный по влесс
+    # --- ЭЛИТА (Специализированные на Reality) ---
+    "https://raw.githubusercontent.com/NiREvil/vless/main/sub/vless_reality_tls_vision_tcp",
+    "https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/xray/base64/mix",
+   ]
 
 # --- 2. ДОМЕНЫ ДЛЯ ПОДМЕНЫ В CDN-КОНФИГАХ ---
 WHITELIST_DOMAINS = [
