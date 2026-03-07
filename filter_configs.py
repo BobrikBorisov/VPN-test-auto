@@ -2,9 +2,8 @@ import requests
 import re
 import random
 
-# --- 1. ИСТОЧНИКИ (Оптимизированный список) ---
-# Убраны Epodonios и barry-far, так как они дают 90% мусора.
-# Оставлены только качественные агрегаторы.
+# --- 1. ЧИСТЫЕ ИСТОЧНИКИ ---
+# Убрали Epodonios и barry-far (главные источники спама)
 URLS = [
     # Качественные миксы
     "https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/xray/base64/mix",
@@ -20,7 +19,7 @@ URLS = [
 ]
 
 # --- НАСТРОЙКИ ---
-MAX_CONFIGS = 1500 # Предел, после которого NekoBox не умрет
+MAX_CONFIGS = 1500 
 WHITELIST_DOMAINS = [
     "google.com", "microsoft.com", "update.microsoft.com", 
     "www.gstatic.com", "cdn.discordapp.com", "cdnjs.cloudflare.com"
@@ -36,13 +35,10 @@ def get_ip_type(ip):
     return "FOREIGN"
 
 def replace_params(link, new_sni, new_name):
-    # Меняем SNI и имя, сохраняя остальное
     if "sni=" in link: 
         link = re.sub(r'sni=[^&#]+', f'sni={new_sni}', link)
     else:
         link += f"&sni={new_sni}"
-        
-    # Удаляем старый хештег и ставим новый
     link = re.sub(r'#[^#]*$', f'#{new_name}', link)
     return link
 
@@ -56,7 +52,7 @@ def decode_if_needed(content):
 
 def process_configs():
     generated_configs = []
-    print(f">>> Сбор мусора (Лимит: {MAX_CONFIGS})...")
+    print(f">>> Сбор мусора с фильтром анти-спам (Лимит: {MAX_CONFIGS})...")
 
     for url in URLS:
         try:
@@ -67,7 +63,13 @@ def process_configs():
 
             for line in lines:
                 line = line.strip()
-                # ФИЛЬТР 1: Только VLESS. VMess/Trojan выкидываем для экономии сил.
+                
+                # --- АНТИ-СПАМ ФИЛЬТР ---
+                # 1. Слишком длинная строка (спам в названии или UUID)
+                if len(line) > 1000: continue 
+                # 2. Признак битой кодировки или спама (%25%25...)
+                if "%25" in line: continue
+                # 3. Только VLESS
                 if not line.startswith("vless://"): continue
                 
                 match = re.search(r'@([^:]+):', line)
@@ -79,31 +81,24 @@ def process_configs():
                 # --- ЛОГИКА ОБРАБОТКИ ---
                 
                 if ip_type.startswith("RU_"):
-                    # Российские берем всегда
                     generated_configs.append(line.replace("#", f"#🇷🇺_{ip_type}_"))
                 
                 elif ip_type == "CDN_CLOUDFLARE" and "ws" in line:
-                    # CDN берем, но БЕЗ РАЗМНОЖЕНИЯ. 1 конфиг = 1 вариант.
-                    # Берем рандомный белый домен
                     sni = random.choice(WHITELIST_DOMAINS)
                     new_name = f"☁️_CDN_Mix"
                     new_link = replace_params(line, sni, new_name)
                     generated_configs.append(new_link)
 
                 elif ip_type == "FOREIGN":
-                    # Остальные иностранные. Берем только Reality.
                     if "security=reality" in line:
                         generated_configs.append(line.replace("#", "#🎯_Reality_Mix"))
 
         except Exception as e:
             print(f"Ошибка с {url}: {e}")
 
-    # Удаляем дубликаты
     unique_configs = list(set(generated_configs))
-    print(f">>> Найдено уникальных VLESS: {len(unique_configs)}")
+    print(f">>> Найдено чистых VLESS: {len(unique_configs)}")
 
-    # ПЕРЕМЕШИВАЕМ И ОБРЕЗАЕМ
-    # Это самое важное. Мы берем случайную выборку, чтобы не потерять разнообразие.
     random.shuffle(unique_configs)
     
     if len(unique_configs) > MAX_CONFIGS:
