@@ -3,7 +3,6 @@ import re
 import random
 
 # --- 1. ЧИСТЫЕ ИСТОЧНИКИ ---
-# Убрали Epodonios и barry-far (главные источники спама)
 URLS = [
     # Качественные миксы
     "https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/xray/base64/mix",
@@ -13,13 +12,11 @@ URLS = [
     # Специфические парсеры VLESS
     "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless",
     "https://raw.githubusercontent.com/Surfboardv2ray/TGParse/main/python/vless",
-    
-    # Элита Reality
-    "https://raw.githubusercontent.com/NiREvil/vless/main/sub/vless_reality_tls_vision_tcp"
+    "https://raw.githubusercontent.com/Ashkan-m/v2ray/main/Sub.txt",
 ]
 
 # --- НАСТРОЙКИ ---
-MAX_CONFIGS = 1500 
+MAX_CONFIGS = 600 
 WHITELIST_DOMAINS = [
     "google.com", "microsoft.com", "update.microsoft.com", 
     "www.gstatic.com", "cdn.discordapp.com", "cdnjs.cloudflare.com"
