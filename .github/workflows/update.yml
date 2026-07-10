@@ -1,36 +1,33 @@
-name: Update VPN Configs
-
+name: Update WAP Sub
 on:
   schedule:
-    - cron: '30 */4 * * *'     
-  workflow_dispatch: # Кнопка для ручного запуска (чтобы проверить прямо сейчас)
+    - cron: '0 3 * * *' # Запуск каждый день в 03:00 по UTC
+  workflow_dispatch: # Позволяет запускать кнопку вручную
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    
+    runs-runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
-
+          python-version: '3.10'
+          
       - name: Install dependencies
         run: pip install requests
-
-      - name: Run script
-        run: python filter_configs.py
-
-      - name: Update Gist
-        env:
-          GH_TOKEN: ${{ secrets.GIST_TOKEN }}
-          GIST_ID: ${{ secrets.GIST_ID }}
-        run: |
-          # Считываем результат, который создал питон (final_whitelist_subs.txt)
-          CONTENT=$(cat final_whitelist_subs.txt)
           
-          # Отправляем в Gist в файл configs.txt
-          echo "$CONTENT" | gh gist edit $GIST_ID -f "configs.txt" -
+      - name: Run Scraper
+        run: python wap_scraper.py
+        
+      - name: Commit and Push
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add wap_sub.txt
+          git commit -m "Автообновление WAP-подписки" || exit 0
+          git push
