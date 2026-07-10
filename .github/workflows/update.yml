@@ -2,11 +2,11 @@ name: Update WAP Sub
 on:
   schedule:
     - cron: '0 3 * * *' # Запуск каждый день в 03:00 по UTC
-  workflow_dispatch: # Позволяет запускать кнопку вручную
+  workflow_dispatch: # Позволяет запускать скрипт вручную кнопкой
 
 jobs:
   build:
-    runs-runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
