@@ -2,6 +2,8 @@ import requests
 import re
 import random
 import base64
+import asyncio
+import socket
 
 # --- 1. АГРЕГАТОРЫ ИСТОЧНИКОВ ---
 URLS = [
@@ -13,11 +15,10 @@ URLS = [
 ]
 
 # --- 2. НАСТРОЙКИ ---
-MAX_CONFIGS = 500 
+MAX_CONFIGS = 300 
 ALLOWED_PORTS = ["443", "80", "8080", "8443", "2053", "2083", "2087", "2096", "11443"]
 
 def decode_base64_robust(data):
-    """Безопасный декодер Base64 с авто-восстановлением отступов"""
     data = data.strip()
     data += "=" * ((4 - len(data) % 4) % 4)
     try:
@@ -25,9 +26,34 @@ def decode_base64_robust(data):
     except Exception:
         return []
 
+# --- 3. АСИНХРОННЫЙ TCP-СКАНЕР (ПРОЗВОН) ---
+async def check_port(ip, port, config_line):
+    try:
+        # Пытаемся открыть TCP-соединение с таймаутом 3 секунды
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(ip, int(port)), timeout=3.0
+        )
+        writer.close()
+        await writer.wait_closed()
+        return config_line # Порт жив
+    except Exception:
+        return None # Порт мертв
+
+async def verify_configs(parsed_configs):
+    print(f">>> Начинаем TCP-прозвон {len(parsed_configs)} серверов...")
+    tasks = []
+    for config, ip, port in parsed_configs:
+        tasks.append(check_port(ip, port, config))
+    
+    # Запускаем все проверки параллельно
+    results = await asyncio.gather(*tasks)
+    # Отфильтровываем None (мертвые)
+    alive_configs = [res for res in results if res is not None]
+    return alive_configs
+
 def process_configs():
-    generated_configs = []
-    print(f">>> Запуск сборки WAP-базы с сохранением ОРИГИНАЛЬНЫХ имен...")
+    parsed_data = []
+    print(">>> Запуск парсера WAP-совместимой базы...")
 
     for url in URLS:
         try:
@@ -35,51 +61,43 @@ def process_configs():
             if resp.status_code != 200: continue
             
             content = resp.text.strip()
-            
-            # Распаковка если это Base64
-            if "vless://" not in content[:50]:
-                lines = decode_base64_robust(content)
-            else:
-                lines = content.splitlines()
+            lines = content.splitlines() if "vless://" in content[:50] else decode_base64_robust(content)
 
             for line in lines:
                 line = line.strip()
-                
-                # Защита от мусора и тяжелых строк
                 if len(line) > 1000 or not line.startswith("vless://"): continue
                 
-                # Парсинг параметров
                 match = re.search(r'@([^:]+):(\d+)\?([^#]+)', line)
                 if not match: continue
                 
+                ip = match.group(1)
                 port = match.group(2)
                 params = match.group(3)
                 
-                # ФИЛЬТР 1: Только WAP-совместимые порты
                 if port not in ALLOWED_PORTS: continue
                 
-                # ФИЛЬТР 2: Только WAP-совместимый транспорт (без grpc/kcp)
                 type_match = re.search(r'type=([^&]+)', params)
                 transport = type_match.group(1) if type_match else "tcp"
                 if transport not in ["tcp", "ws", "http"]: continue
 
-                # Если конфиг прошел фильтры WAP, добавляем его КАК ЕСТЬ (первозданный вид)
-                generated_configs.append(line)
+                # Сохраняем для прозвона: саму строку, IP и Порт
+                parsed_data.append((line, ip, port))
 
         except Exception as e:
             print(f"[!] Ошибка с {url}: {e}")
 
     # Удаляем дубликаты
-    unique_configs = list(set(generated_configs))
-    print(f">>> Найдено чистых WAP VLESS: {len(unique_configs)}")
+    parsed_data = list(set(parsed_data))
+    
+    # Запускаем асинхронный прозвон
+    alive_configs = asyncio.run(verify_configs(parsed_data))
+    print(f">>> Выжило после прозвона: {len(alive_configs)} узлов")
 
-    # Перемешиваем и обрезаем до лимита
-    random.shuffle(unique_configs)
-    if len(unique_configs) > MAX_CONFIGS:
-        unique_configs = unique_configs[:MAX_CONFIGS]
+    random.shuffle(alive_configs)
+    if len(alive_configs) > MAX_CONFIGS:
+        alive_configs = alive_configs[:MAX_CONFIGS]
 
-    # Упаковка в Base64 для безопасной передачи флагов стран
-    final_text = "\n".join(unique_configs)
+    final_text = "\n".join(alive_configs)
     final_base64 = base64.b64encode(final_text.encode('utf-8')).decode('utf-8')
     
     with open("wap_sub.txt", "w", encoding="utf-8") as f:
