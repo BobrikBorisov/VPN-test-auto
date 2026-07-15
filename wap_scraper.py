@@ -3,7 +3,6 @@ import re
 import random
 import base64
 import asyncio
-import socket
 
 # --- 1. АГРЕГАТОРЫ ИСТОЧНИКОВ ---
 URLS = [
@@ -26,28 +25,28 @@ def decode_base64_robust(data):
     except Exception:
         return []
 
-# --- 3. АСИНХРОННЫЙ TCP-СКАНЕР (ПРОЗВОН) ---
+# --- 3. АСИНХРОННЫЙ СЕМАФОР (АППАРАТНЫЙ ДРОССЕЛЬ) ---
+# Ограничиваем шторм запросов до 50 одновременных сокетов, чтобы ядро GitHub не упало
+sem = asyncio.Semaphore(50)
+
 async def check_port(ip, port, config_line):
-    try:
-        # Пытаемся открыть TCP-соединение с таймаутом 3 секунды
-        reader, writer = await asyncio.wait_for(
-            asyncio.open_connection(ip, int(port)), timeout=3.0
-        )
-        writer.close()
-        await writer.wait_closed()
-        return config_line # Порт жив
-    except Exception:
-        return None # Порт мертв
+    async with sem:
+        try:
+            # Пытаемся открыть TCP-соединение с таймаутом 3 секунды
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(ip, int(port)), timeout=3.0
+            )
+            writer.close()
+            await writer.wait_closed()
+            return config_line
+        except Exception:
+            return None
 
 async def verify_configs(parsed_configs):
-    print(f">>> Начинаем TCP-прозвон {len(parsed_configs)} серверов...")
-    tasks = []
-    for config, ip, port in parsed_configs:
-        tasks.append(check_port(ip, port, config))
+    print(f">>> Начинаем TCP-прозвон {len(parsed_configs)} серверов (потоками по 50 штук)...")
+    tasks = [check_port(ip, port, config) for config, ip, port in parsed_configs]
     
-    # Запускаем все проверки параллельно
     results = await asyncio.gather(*tasks)
-    # Отфильтровываем None (мертвые)
     alive_configs = [res for res in results if res is not None]
     return alive_configs
 
@@ -80,18 +79,20 @@ def process_configs():
                 transport = type_match.group(1) if type_match else "tcp"
                 if transport not in ["tcp", "ws", "http"]: continue
 
-                # Сохраняем для прозвона: саму строку, IP и Порт
                 parsed_data.append((line, ip, port))
 
         except Exception as e:
             print(f"[!] Ошибка с {url}: {e}")
 
-    # Удаляем дубликаты
     parsed_data = list(set(parsed_data))
     
-    # Запускаем асинхронный прозвон
+    # Запускаем аккуратный прозвон
     alive_configs = asyncio.run(verify_configs(parsed_data))
     print(f">>> Выжило после прозвона: {len(alive_configs)} узлов")
+
+    if len(alive_configs) == 0:
+        print("[!] ОШИБКА: Выживших серверов нет. База пуста.")
+        return
 
     random.shuffle(alive_configs)
     if len(alive_configs) > MAX_CONFIGS:
