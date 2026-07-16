@@ -15,7 +15,7 @@ URLS = [
 
 # === 2. СТРОГИЕ ПРАВИЛА WAP-МАРШРУТИЗАЦИИ ===
 MAX_CONFIGS = 300 
-ALLOWED_PORTS = ["443", "8443", "2053", "2083", "2087", "2096"] # Только HTTPS порты для CONNECT
+ALLOWED_PORTS = ["443", "8443", "2053", "2083", "2087", "2096", "2090", "444", "16378",] # Только HTTPS порты для CONNECT
 BLACKLIST_WORDS = ["CN", "IR", "HK", "CHINA", "IRAN", "ИРАН", "КИТАЙ", "🇮🇷", "🇨🇳", "🇭🇰"]
 
 def decode_base64_robust(data):
