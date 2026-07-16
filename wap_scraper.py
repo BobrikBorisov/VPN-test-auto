@@ -9,10 +9,7 @@ import asyncio
 URLS = [
     "https://raw.githubusercontent.com/Epodonios/v2ray-configs/refs/heads/main/All_Configs_base64_Sub.txt",
     "https://raw.githubusercontent.com/barry-far/V2ray-Config/refs/heads/main/All_Configs_Sub.txt",
-    "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/refs/heads/main/subscriptions/v2ray/all_sub.txt",
-    "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless",
     "https://raw.githubusercontent.com/Surfboardv2ray/TGParse/main/python/vless",
-    "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/refs/heads/main/subscriptions/v2ray/all_sub.txt",
     "https://raw.githubusercontent.com/Argh94/Proxy-List/refs/heads/main/All_Config.txt",
     # "СЮДА_МОЖНО_ВСТАВИТЬ_ВАШУ_ССЫЛКУ",
 ]
